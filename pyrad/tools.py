@@ -1,61 +1,50 @@
 # tools.py
 #
 # Utility functions
-from ipaddress import IPv4Address, IPv6Address
-from ipaddress import IPv4Network, IPv6Network
+from netaddr import IPAddress
+from netaddr import IPNetwork
 import struct
+import six
 import binascii
 
 
-def EncodeString(origstr):
-    if len(origstr) > 253:
+def EncodeString(str):
+    if len(str) > 253:
         raise ValueError('Can only encode strings of <= 253 characters')
-    if isinstance(origstr, str):
-        return origstr.encode('utf-8')
+    if isinstance(str, six.text_type):
+        return str.encode('utf-8')
     else:
-        return origstr
+        return str
 
 
-def EncodeOctets(octetstring):
-    # Check for max length of the hex encoded with 0x prefix, as a sanity check
-    if len(octetstring) > 508:
+def EncodeOctets(str):
+    if len(str) > 253:
         raise ValueError('Can only encode strings of <= 253 characters')
 
-    if isinstance(octetstring, bytes) and octetstring.startswith(b'0x'):
-        hexstring = octetstring.split(b'0x')[1]
-        encoded_octets = binascii.unhexlify(hexstring)
-    elif isinstance(octetstring, str) and octetstring.startswith('0x'):
-        hexstring = octetstring.split('0x')[1]
-        encoded_octets = binascii.unhexlify(hexstring)
-    elif isinstance(octetstring, str) and octetstring.isdecimal():
-        encoded_octets = struct.pack('>L',int(octetstring)).lstrip((b'\x00'))
+    if str.startswith(b'0x'):
+        hexstring = str.split(b'0x')[1]
+        return binascii.unhexlify(hexstring)
     else:
-        encoded_octets = octetstring
-
-    # Check for the encoded value being longer than 253 chars
-    if len(encoded_octets) > 253:
-        raise ValueError('Can only encode strings of <= 253 characters')
-
-    return encoded_octets
+        return str
 
 
 def EncodeAddress(addr):
-    if not isinstance(addr, str):
+    if not isinstance(addr, six.string_types):
         raise TypeError('Address has to be a string')
-    return IPv4Address(addr).packed
+    return IPAddress(addr).packed
 
 
 def EncodeIPv6Prefix(addr):
-    if not isinstance(addr, str):
+    if not isinstance(addr, six.string_types):
         raise TypeError('IPv6 Prefix has to be a string')
-    ip = IPv6Network(addr)
+    ip = IPNetwork(addr)
     return struct.pack('2B', *[0, ip.prefixlen]) + ip.ip.packed
 
 
 def EncodeIPv6Address(addr):
-    if not isinstance(addr, str):
+    if not isinstance(addr, six.string_types):
         raise TypeError('IPv6 Address has to be a string')
-    return IPv6Address(addr).packed
+    return IPAddress(addr).packed
 
 
 def EncodeAscendBinary(orig_str):
@@ -144,7 +133,6 @@ def EncodeInteger(num, format='!I'):
         raise TypeError('Can not encode non-integer as integer')
     return struct.pack(format, num)
 
-
 def EncodeInteger64(num, format='!Q'):
     try:
         num = int(num)
@@ -152,19 +140,21 @@ def EncodeInteger64(num, format='!Q'):
         raise TypeError('Can not encode non-integer as integer64')
     return struct.pack(format, num)
 
-
 def EncodeDate(num):
     if not isinstance(num, int):
         raise TypeError('Can not encode non-integer as date')
     return struct.pack('!I', num)
 
 
-def DecodeString(orig_str):
-    return orig_str.decode('utf-8')
+def DecodeString(str):
+    try:
+        return str.decode('utf-8')
+    except:
+        return str
 
 
-def DecodeOctets(orig_bytes):
-    return orig_bytes
+def DecodeOctets(str):
+    return str
 
 
 def DecodeAddress(addr):
@@ -174,17 +164,17 @@ def DecodeAddress(addr):
 def DecodeIPv6Prefix(addr):
     addr = addr + b'\x00' * (18-len(addr))
     _, length, prefix = ':'.join(map('{0:x}'.format, struct.unpack('!BB'+'H'*8, addr))).split(":", 2)
-    return str(IPv6Network("%s/%s" % (prefix, int(length, 16))))
+    return str(IPNetwork("%s/%s" % (prefix, int(length, 16))))
 
 
 def DecodeIPv6Address(addr):
     addr = addr + b'\x00' * (16-len(addr))
     prefix = ':'.join(map('{0:x}'.format, struct.unpack('!'+'H'*8, addr)))
-    return str(IPv6Address(prefix))
+    return str(IPAddress(prefix))
 
 
-def DecodeAscendBinary(orig_bytes):
-    return orig_bytes
+def DecodeAscendBinary(str):
+    return str
 
 
 def DecodeInteger(num, format='!I'):
