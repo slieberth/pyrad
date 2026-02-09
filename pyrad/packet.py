@@ -230,6 +230,11 @@ class Packet(OrderedDict):
                       **attributes)
 
     def _DecodeValue(self, attr, value):
+
+        if attr.encrypt == 1:
+            # salt decrypt attribute
+            value = self.PwDecrypt(value)
+
         if attr.encrypt == 2:
             # salt decrypt attribute
             value = self.SaltDecrypt(value)
@@ -245,6 +250,10 @@ class Packet(OrderedDict):
             result = attr.values.GetForward(value)
         else:
             result = tools.EncodeAttr(attr.type, value)
+
+        if attr.encrypt == 1:
+            # salt encrypt attribute
+            result = self.PwCrypt(result)
 
         if attr.encrypt == 2:
             # salt encrypt attribute
@@ -634,6 +643,9 @@ class Packet(OrderedDict):
         value = value[1:length+1]
 
         return value
+
+
+
 
 
 class AuthPacket(Packet):
